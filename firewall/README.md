@@ -1,48 +1,27 @@
-# Firewall
+# Dynamic Firewall
+This project is an improvement of the project this repo:
+https://github.com/afmdnf/firewall
+# Improvements:
+1.Combined Port and IP Rule Logic
+The previous code handled ports and IPs separately:
+I add the logic to handel a rule with is a combination of ports and rules 
+example:
+the rule ("inbound","tcp", 80, "192.168.1.3") shoudon't be accssepted 
+this is the fiare wall rules in the csv file at this time:
+inbound,tcp,80,192.168.1.2
+outbound,tcp,10000-20000,192.168.10.11
+inbound,udp,53,192.168.1.1-192.168.2.5
+outbound,udp,1000-2000,52.12.48.92
+inbound,tcp,443-8547,0.0.1.8-255.127.61.44
+![Before adding Rule class](https://github.com/user-attachments/assets/843cd830-4bbd-443f-be3f-a1b62234683e)
+After adding the Rule classe the probleme resolved:
+![After the Rule classe](https://github.com/user-attachments/assets/4eb31b29-6859-47e0-8370-e15b7af28ea7)
+2. Adding the automatique syncronization of the rules from csv file without the neede to relance the programme :
+example:
+![image](https://github.com/user-attachments/assets/143e5993-6537-486c-a90e-8fab58aa7a38)
+3. dynamicly add and remove firewall rules:
+add rules to csv file automaticly.
+removing rules that not be uset for a long time
+4. stopping DDos attacks and deleting all the rules that accepte the ip address that tray to do a DDos attack
+![image](https://github.com/user-attachments/assets/305b7edf-3778-46ae-8abd-7c1bf9703709)
 
-Host-based default-deny firewall implementation in Java, with a focus on efficiency and compactness.
-
-## Input
-Allowed rules CSV file with columns: `direction,protocol,ports,IPaddress`
-* direction: {'inbound', 'outbound'}
-* protocol: {'tcp', 'udp'}
-* port: either an integer or a range separated by a dash in [1, 65535]
-* IPaddress: IPv4 address in dot notation (either single or range separated by a dash) [0.0.0.0 - 255.255.255.255]
-
-The filename of the CSV file is passed as an argument to the constructor of the `Firewall` class. The method `accept_packet(direction, protocol, port, IP)` returns a boolean representing whether the input packet is to be allowed or not, based on whether it is contained in any of the rules.
-
-## Implementation Details
-The implementation follows an object-oriented approach with the following classes:
-
-* **`Firewall.java`**: main firewall class that has four objects of `PortIPRules`, each corresponding to one of the combinations of direction (inbound/outbound) and protocol (tcp/udp).
-* **`PortIPRules.java`**: contains HashSets of individual IPs/ports and TreeSets for IP/port ranges. Provides methods `addIPRule` and `addPortRule` for adding IP/port rules and `match` for checking whether the input matches any rule utilizing methods `matchPort` and `matchIP`.
-* **`OctetRange.java`**: represents an IP range. Objects are compared only using the start of the range. Uses method `toIP` to convert IP address to `Long` representation in order to help in comparison.
-* **`PortRange.java`**: represents a port range. Objects are compared only using the start of the range.
-
-For checking whether an input packet matches any rule, the following checks take place:
-* Check if the input IP/port exists in the individual port/IP HashSets.
-* If the above check fails, check if the input IP exists within any of the ranges in the IP ranges' TreeSet. The TreeSet helps in maintaining the IP ranges in sorted order in order to allow for efficient lookups. The [TreeSet.lower](https://docs.oracle.com/javase/7/docs/api/java/util/TreeSet.html#lower(E)) method returns the `OctetRange` object with the greatest start of the range that is strictly less than the input IP. This object's end of the range is then compared with the input IP to see if it falls within that range.
-* A similar check is done for checking whether the input port falls within any of the ranges in the port ranges' TreeSet.
-
-**Assumption:** Implementation assumes that the IP/port ranges in the input rules do not overlap with each other. Since only the start of the range is used for maintaining sorted order, the implementation could have false negatives in certain cases if this assumption is violated.
-
-## Performance Analysis
-For each (direction, protocol), the following applies to each of the IP and port lookups.<br>
-Let the number of rules be `N`, among which `R` contain ranges such that the total number of affected IPs/ports is `P`.
-
-Lookup in the `HashSet` is O(1) amortized. Storing IPs as Strings in the HashSet helps in utilizing Java's hashCode for Strings and leads to good spread => good performance guarantees. <br>Lookup in the `TreeSet` is [O(log R)](https://docs.oracle.com/javase/7/docs/api/java/util/TreeSet.html).
-
-* **Time Complexity:** Best - `O(1)`, Worst - `O(log R)`
-
-Storing all possible allowed IPs/ports in a HashSet might potentially allow for O(1) lookups even in the worst case but it would lead to a blow-up in space complexity of O(P), which could be a problem for large R (which is often the case in firewalls) as then, P >> N. Using a TreeSet to store only the ranges does not lead to this problem.
-* **Space Complexity:** `O(N)`
-
-## Testing
-All tests are located in `test/FirewallTest.java`. I used JUnit for testing and each test includes comments about what edge case it tries to cover, in addition to the example tests.
-
-## Possible Improvements
-* Using a LPM (Longest Prefix Match) tree to match IP addresses might reduce the time complexity for the range IP lookup
-* Some of the methods seem to do the same thing so the idea would be to implement abstract methods and cut down repetitive code
-* Extensive testing to verify performance guarantees
-* Multi-threaded check for port/IP
-* Input validation
